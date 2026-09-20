@@ -1,0 +1,35 @@
+{
+  "source": "hotnets24-e2e-perf-analysis-of-learning-enabled-systems.pdf",
+  "source_sha256": "0906f4f63bd76e2825873750f65f18bf7d11a2a5ae5dec66e59fee4fec623788",
+  "output_sha256": "adc9fad7a49aa05ef65cfece883a1310b71d55cbf99c790009e99e9f0589981c",
+  "notes": [
+    {
+      "id": 1,
+      "page": 4,
+      "title": "The P sweep: separate runs, one per yardstick",
+      "body": "P fixes the yardstick the ratio is measured against. Each run constrains the\nsearch to demands the optimal routes at exactly MLU = P; the whole search is\nthen re-run for several values of P, and the largest ratio found wins. So it is\na sweep of separate searches, not one search that also optimizes P.\n\nWhy it is needed: it is the fallback for DOTE possibly NOT being scale-\ninvariant. MLU(d,f) is homogeneous -- scaling every demand by k scales every\nutilization by k -- so MLU_OPT(k*d) = k*MLU_OPT(d), and every demand can be\nscaled onto the MLU_OPT = 1 surface. If DOTE's split ratios are unchanged by\nthat scaling, MLU_DOTE is homogeneous too, the ratio is constant along each ray\nfrom the origin, and the single cross-section P = 1 already covers every\ndirection -- which is exactly why they say P = 1 is sufficient for MLU. A DNN\nhas no built-in reason to be scale-invariant, though; when it is not, the ratio\nvaries along a ray, one cross-section is no longer the whole search space, and\nsweeping P restores the magnitude dimension that normalizing threw away.",
+      "quote": "We then search for the value of P that results in the largest performance ratio. Our method is fast (5), so we can run it multiple times. For MLU, solving for P = 1 is sufficient."
+    },
+    {
+      "id": 2,
+      "page": 7,
+      "title": "One way to do this is to add these examples to the DNN's tra",
+      "body": "",
+      "quote": "One way to do this is to add these examples to the DNN's training data but we need to ensure that this does not adversely impact the DNN's average performance."
+    },
+    {
+      "id": 3,
+      "page": 3,
+      "title": "Eq. (1) alone still needs the whole model",
+      "body": "Eq. (1) as written, x <- x + alpha * grad_x M_adv(H(x)), hides a demand: to take\nthat gradient you need H -- the entire pipeline, DNN plus post-processor plus\nrouting plus MLU -- as one symbolic expression you can differentiate. That is\nthe same thing MetaOpt asks for when it wants the system as an MILP. So Eq. (1)\non its own buys you nothing: you have swapped a solver that needs the whole\nmodel for a gradient that needs the whole model.\n\nThe escape is the next paragraph and Figure 4: you never need H itself, only the\nchain rule over its pieces. Each H_i is differentiated in place -- autograd\nthrough a DNN, a hand-derived formula, or a numerical estimate from samples --\nand the Jacobians are multiplied, so no single expression describing the\ncomposition ever exists.",
+      "quote": "Equation (1) still requires modeling a complex learning-enabled system as a closed form expression H (x), which goes against our initial goal for an easy-to-use gray-box solution."
+    },
+    {
+      "id": 4,
+      "page": 4,
+      "title": "\"Mathematical representation\" is weaker than \"exact model\"",
+      "body": "Two routes to the same Jacobian, and \"mathematical representation\" is doing\ncareful work here: it is deliberately weaker than \"exact model\".\n\n1. Mathematical representation. You know the component's formula well enough to\n   differentiate it -- nothing more. The routing step is linear,\n   loads = pte^T (f * d), so its Jacobian is exactly pte^T. For the DNN,\n   autograd is the mechanical version of the same thing.\n\n   The contrast is with what a white-box tool needs: the function re-expressed\n   in the solver's restricted algebra (linear constraints, MILP, first-order\n   logic), globally valid, and encoded jointly with every other component. That\n   is why MetaOpt needed DOTE's activation swapped for a piecewise-linear one --\n   not because the true activation has no derivative, but because it could not\n   be written in the solver's language. A tanh has a perfectly good mathematical\n   representation and a trivial derivative; it simply is not MILP-encodable.\n   So \"representation\" means differentiable form, not solver-encodable form.\n\n2. Samples. When the formula is not available at all -- a closed-source\n   component, a simulator, a measurement -- probe it at nearby inputs and\n   estimate the gradient numerically. Citation [39] is a Gaussian process\n   regression tutorial, so the intent is fitting a local surrogate and\n   differentiating that, rather than raw finite differences.\n\nThe difference that matters: route 1 gives the exact Jacobian, route 2 an\napproximation -- which is where Section 6's hedge \"(approximately) piecewise\nsub-differentiable\" comes from.\n\nIn our reimplementation everything went through route 1 (DNN by autograd,\nrouting and the max analytically). Route 2 is never exercised, which is a soft\nspot in the paper: it carries real weight in the generality claim but is\ndemonstrated nowhere.",
+      "quote": "We do not need an exact model of each function Hi to compute the gradients. We can either compute the gradient through its mathematical representation or compute it locally through samples of the function [39]."
+    }
+  ]
+}
